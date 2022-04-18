@@ -8,9 +8,43 @@ import detectEthereumProvider from '@metamask/detect-provider';
 
 export let web3Provider;
 
+const AssetList = styled.ul`
+  display: flex;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  li {
+    margin-right: 1rem;
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+`;
+const ImageAsset = ({ asset }) => {
+  const {
+    image_thumbnail_url,
+    description,
+    name,
+    permalink,
+    is_presale,
+  } = asset;
+  return (
+    <>
+      <a href={permalink} target="_blank">
+        <h3>{name}</h3>
+        <img src={image_thumbnail_url} alt={description} />
+        <br />
+        {is_presale ? 'Presale' : 'Sale'}
+      </a>
+    </>
+  );
+};
 const IndexPage = () => {
   const [stateAccountDetails, setStateAccountDetails] = useState({});
   const [stateSeaport, setStateSeaport] = useState(null);
+  const [stateAssetCollection, setStateAssetCollection] = useState(
+    []
+  );
   const networkCallbacks = [];
 
   const onNetworkUpdate = (callback: any) => {
@@ -29,9 +63,22 @@ const IndexPage = () => {
 
     onChangeAddress();
     onNetworkUpdate(onChangeAddress);
+
     return () => {};
   }, []);
-
+  const renderTokensForOwner = (ownerAddress) => {
+    const options = {
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+    };
+    const path = `https://api.opensea.io/api/v1/assets?owner=${ownerAddress}&order_direction=desc&limit=20&include_orders=false`;
+    fetch(path, options)
+      .then((response) => response.json())
+      .then((response) => {
+        setStateAssetCollection(response.assets);
+      })
+      .catch((err) => console.error(err));
+  };
   const onChangeAddress = async () => {
     const seaport = new OpenSeaPort(web3Provider, {
       networkName: Network.Main,
@@ -58,6 +105,9 @@ const IndexPage = () => {
       accountAddress,
       accountBalance,
     });
+
+    renderTokensForOwner(accountAddress);
+
     setStateSeaport(seaport);
   };
 
@@ -87,6 +137,16 @@ const IndexPage = () => {
             </li>
           )}
         </ul>
+        <br />
+        <AssetList>
+          {stateAssetCollection.map((asset) => {
+            return (
+              <li key={`image_asset_${asset.id}`}>
+                <ImageAsset asset={asset} />
+              </li>
+            );
+          })}
+        </AssetList>
       </main>
     </div>
   );
